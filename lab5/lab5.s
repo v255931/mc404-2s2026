@@ -13,44 +13,62 @@ main:
     jal read
 
     la a1, input_address
+    li t2, 10           # Multiplicador
 
-    # Lê o primeiro número (A)
-    li t0, 0            # t0 será o valor de A
-    li t2, 10
-parse_A:
-    lbu t3, 0(a1)       # Carrega o byte atual
-    addi a1, a1, 1      # Avança ponteiro para o próximo byte
-    li t4, 32           # ASCII para espaço (' ')
-    beq t3, t4, skip_spaces # Se for espaço, terminou o número A
-    li t4, 10           # ASCII para newline ('\n')
-    beq t3, t4, parse_B_init
-    beqz t3, parse_B_init
-    addi t3, t3, -48    # Converte ASCII para valor inteiro
-    mul t0, t0, t2      # Multiplica acumulador por 10
-    add t0, t0, t3      # Adiciona o novo dígito
-    j parse_A
-
-skip_spaces:
+    # Extrai o Número A
+    li t0, 0            # Acumulador A
+find_A:
     lbu t3, 0(a1)
-    li t4, 32
-    bne t3, t4, parse_B_init # Se já não for espaço, começa a ler o B
-    addi a1, a1, 1      # Se ainda for espaço, avança
-    j skip_spaces
-
-parse_B_init:
-    li t1, 0            # t1 será o valor de B
-parse_B:
-    lbu t3, 0(a1)
+    beqz t3, end_parse  # Fim da string
     addi a1, a1, 1
-    li t4, 10           # ASCII para newline
-    beq t3, t4, end_parse # Se encontrar newline, terminou
-    li t4, 32           # ASCII para espaço
-    beq t3, t4, end_parse
-    beqz t3, end_parse  # Se encontrar fim da string, terminou
+    li t4, 48
+    blt t3, t4, find_A  # Se menor que '0' (espaço, \n, \r), ignora
+    li t4, 57
+    bgt t3, t4, find_A  # Se maior que '9', ignora
+    
+    # Encontrou o primeiro dígito de A
+    addi t3, t3, -48
+    add t0, t0, t3
+read_A:
+    lbu t3, 0(a1)
+    li t4, 48
+    blt t3, t4, find_B  # Não é dígito, então o A acabou. Vai procurar o B
+    li t4, 57
+    bgt t3, t4, find_B
+    
+    addi a1, a1, 1
+    addi t3, t3, -48
+    mul t0, t0, t2
+    add t0, t0, t3
+    j read_A
+
+    # Extrai o Número B
+find_B:
+    li t1, 0            # Acumulador B
+find_B_loop:
+    lbu t3, 0(a1)
+    beqz t3, end_parse
+    addi a1, a1, 1
+    li t4, 48
+    blt t3, t4, find_B_loop
+    li t4, 57
+    bgt t3, t4, find_B_loop
+
+    # Encontrou o primeiro dígito de B
+    addi t3, t3, -48
+    add t1, t1, t3
+read_B:
+    lbu t3, 0(a1)
+    li t4, 48
+    blt t3, t4, end_parse # Fim do B (encontrou \n, \r, etc)
+    li t4, 57
+    bgt t3, t4, end_parse
+
+    addi a1, a1, 1
     addi t3, t3, -48
     mul t1, t1, t2
     add t1, t1, t3
-    j parse_B
+    j read_B
 
 end_parse:
 
@@ -116,7 +134,7 @@ mdc_end:
 read:
     li a0, 0            # file descriptor = 0 (stdin)
     la a1, input_address # buffer
-    li a2, 6            # size (6 bytes)
+    li a2, 32           
     li a7, 63           # syscall read (63)
     ecall
     ret
@@ -130,5 +148,5 @@ write:
     ret
 
 .bss
-input_address: .skip 0x06  # Buffer de entrada de 6 bytes
+input_address: .skip 0x20  
 result:        .skip 0x05  # Buffer de saída de 5 bytes
