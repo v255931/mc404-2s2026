@@ -14,22 +14,45 @@ main:
 
     la a1, input_address
 
-    # Converte o primeiro número A (bytes 0 e 1)
-    lbu t0, 0(a1)       # Caractere da dezena de A
-    addi t0, t0, -48    # Converte ASCII '0'-'9' para valor 0-9
+    # Lê o primeiro número (A)
+    li t0, 0            # t0 será o valor de A
     li t2, 10
-    mul t0, t0, t2      # Dezena * 10
-    lbu t1, 1(a1)       # Caractere da unidade de A
-    addi t1, t1, -48    # Converte ASCII para valor
-    add t0, t0, t1      # t0 = valor de A
+parse_A:
+    lbu t3, 0(a1)       # Carrega o byte atual
+    addi a1, a1, 1      # Avança ponteiro para o próximo byte
+    li t4, 32           # ASCII para espaço (' ')
+    beq t3, t4, skip_spaces # Se for espaço, terminou o número A
+    li t4, 10           # ASCII para newline ('\n')
+    beq t3, t4, parse_B_init
+    beqz t3, parse_B_init
+    addi t3, t3, -48    # Converte ASCII para valor inteiro
+    mul t0, t0, t2      # Multiplica acumulador por 10
+    add t0, t0, t3      # Adiciona o novo dígito
+    j parse_A
 
-    # Converte o segundo número B (bytes 3 e 4)
-    lbu t1, 3(a1)       # Caractere da dezena de B
-    addi t1, t1, -48
-    mul t1, t1, t2      # Dezena * 10
-    lbu t3, 4(a1)       # Caractere da unidade de B
+skip_spaces:
+    lbu t3, 0(a1)
+    li t4, 32
+    bne t3, t4, parse_B_init # Se já não for espaço, começa a ler o B
+    addi a1, a1, 1      # Se ainda for espaço, avança
+    j skip_spaces
+
+parse_B_init:
+    li t1, 0            # t1 será o valor de B
+parse_B:
+    lbu t3, 0(a1)
+    addi a1, a1, 1
+    li t4, 10           # ASCII para newline
+    beq t3, t4, end_parse # Se encontrar newline, terminou
+    li t4, 32           # ASCII para espaço
+    beq t3, t4, end_parse
+    beqz t3, end_parse  # Se encontrar fim da string, terminou
     addi t3, t3, -48
-    add t1, t1, t3      # t1 = valor de B
+    mul t1, t1, t2
+    add t1, t1, t3
+    j parse_B
+
+end_parse:
 
     # Salva cópias dos valores originais para o cálculo final do MMC
     mv t3, t0           # t3 = A_original
@@ -53,7 +76,7 @@ mdc_end:
     # 5. Converte o inteiro do MMC para uma string de 4 dígitos (DDDD\n)
     la a1, result
     
-    li t2, 10           # Restaura o valor 10 para as divisões seguintes
+    li t2, 10           # Restaura o valor 10 para as divisões
 
     # Dígito 3 (Unidade)
     rem t6, t5, t2
