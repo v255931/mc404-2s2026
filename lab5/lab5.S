@@ -52,6 +52,8 @@ mdc_end:
 
     # 5. Converte o inteiro do MMC para uma string de 4 dígitos (DDDD\n)
     la a1, result
+    
+    li t2, 10           # Restaura o valor 10 para as divisões seguintes
 
     # Dígito 3 (Unidade)
     rem t6, t5, t2
